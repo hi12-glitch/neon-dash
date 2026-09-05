@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neon Dash</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Neon Dash home"><span class="brand-mark">◆</span> NEON DASH</a>
+        <div class="top-actions">
+          <span class="key-hint"><kbd>SPACE</kbd> / <kbd>CLICK</kbd> TO JUMP</span>
+          <button class="sound-button" id="soundButton" aria-label="Toggle sound">♫</button>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <p class="eyebrow">ARCADE PLATFORMER</p>
+          <h1>READY TO <span>DASH?</span></h1>
+          <p class="subtitle">Jump, flip, and survive the beat. One mistake sends you back to the start.</p>
+        </div>
+        <div class="stats" aria-label="Game statistics">
+          <div><span>BEST</span><strong id="bestScore">0%</strong></div>
+          <div><span>RUN</span><strong id="runScore">0%</strong></div>
+        </div>
+      </section>
+
+      <section class="game-card" aria-label="Neon Dash game">
+        <div class="game-topline">
+          <span class="level-dot"></span><span>LEVEL 01 — FIRST FLIGHT</span>
+          <span class="attempts" id="attempts">ATTEMPT 1</span>
+        </div>
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="game" width="1200" height="560" aria-label="Play area"></canvas>
+          <div class="overlay" id="overlay">
+            <div class="cube-icon"><i></i><i></i><i></i><i></i></div>
+            <h2 id="overlayTitle">FIRST FLIGHT</h2>
+            <p id="overlayText">Tap anywhere or press Space to start</p>
+            <button id="playButton">PLAY LEVEL <span>▶</span></button>
+          </div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      </section>
+
+      <section class="how-to">
+        <div class="how-copy"><span class="mini-label">HOW TO PLAY</span><h2>Simple controls.<br /><em>Sharp reflexes.</em></h2></div>
+        <div class="control"><div class="control-icon">⌁</div><div><h3>JUMP</h3><p>Press Space, ↑, or click/tap to jump.</p></div></div>
+        <div class="control"><div class="control-icon">△</div><div><h3>AVOID SPIKES</h3><p>Time your moves and stay alive.</p></div></div>
+        <div class="control"><div class="control-icon">↻</div><div><h3>DON'T STOP</h3><p>Your cube keeps moving. Keep up.</p></div></div>
+      </section>
+    </main>
+    <footer>MADE FOR THE RHYTHM <span>✦</span> CLICK OR PRESS SPACE TO PLAY</footer>
+    <script src="game.js"></script>
+  </body>
+</html>
