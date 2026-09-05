@@ -18,21 +18,23 @@ const spike = (x, count = 1, h = 44) => ({kind:'spike', x, count, w:38 * count, 
 const block = (x, h = 42, w = 42) => ({kind:'block', x, w, h});
 const pad = (x, power = 900) => ({kind:'pad', x, w:48, h:12, power});
 const portal = (x, color = '#ff5eb3', speed = 1) => ({kind:'portal', x, w:58, h:120, color, speed});
+const orb = (x, y, color = '#ffcf4d') => ({kind:'orb', x, y, w:38, color});
+const coin = (x, y) => ({kind:'coin', x, y, w:24, collected:false});
 
 function makeLevel() {
   return [
-    spike(620), spike(670), block(900), spike(942), spike(1130, 2),
+    spike(620), spike(670), block(900), spike(942), spike(1130, 2), orb(1245, 285), coin(1310, 230),
     pad(1370), spike(1560, 2), block(1780, 84), spike(1825),
     block(2045), block(2088, 84), block(2131, 126), spike(2178),
     portal(2440, '#58e4ff', 1.18), spike(2660), spike(2715), block(2920), spike(2962),
-    pad(3170, 1000), spike(3370, 3), block(3600, 42, 90), spike(3690),
+    pad(3170, 1000), orb(3320, 235, '#53e6ff'), spike(3370, 3), block(3600, 42, 90), spike(3690),
     block(3890, 84), block(3932, 126), spike(3974), portal(4250, '#ffcf4d', 1.28),
-    spike(4490, 2), pad(4740, 1060), spike(4960, 3), block(5250, 42, 126), spike(5390, 2)
+    spike(4490, 2), coin(4560, 300), pad(4740, 1060), orb(4880, 205, '#ff67b1'), spike(4960, 3), block(5250, 42, 126), spike(5390, 2)
   ];
 }
 
 function reset() {
-  player = {x: 180, y: FLOOR - SIZE, vy: 0, rotation: 0, grounded: true, trail: [], speed: 1};
+  player = {x: 180, y: FLOOR - SIZE, vy: 0, rotation: 0, grounded: true, trail: [], speed: 1, nearOrb:null, coins:0};
   level = makeLevel(); particles = []; distance = 0; beat = 0; flash = 0;
   runScore.textContent = '0%'; progressFill.style.width = '0%';
 }
@@ -51,7 +53,11 @@ function burst(x, y, color, amount = 14) {
 }
 
 function start() { reset(); running = true; overlay.classList.add('hidden'); lastTime = performance.now(); requestAnimationFrame(loop); }
-function jump() { if (!running) return start(); if (player.grounded) { player.vy = -735; player.grounded = false; tone(660); burst(player.x + 20, player.y + 36, '#62e8ff', 7); } }
+function jump() {
+  if (!running) return start();
+  if (player.nearOrb) { const orb = player.nearOrb; player.vy = -850; player.grounded = false; orb.used = true; tone(980,.08); burst(player.x+20,player.y+20,orb.color,18); return; }
+  if (player.grounded) { player.vy = -735; player.grounded = false; tone(660); burst(player.x + 20, player.y + 36, '#62e8ff', 7); }
+}
 function die() { if (!running) return; running = false; flash = 1; tone(95, .22, .06); burst(player.x+20, player.y+20, '#ff538b', 34); attempt++; attemptsEl.textContent = `ATTEMPT ${attempt}`; overlayTitle.textContent = 'CRASHED!'; overlayText.textContent = 'The beat waits for no one — try again'; playButton.innerHTML = 'RETRY LEVEL <span>↻</span>'; overlay.classList.remove('hidden'); draw(); }
 function win() { running = false; best = 100; localStorage.neonDashBest = best; bestScore.textContent = '100%'; overlayTitle.textContent = 'LEVEL COMPLETE!'; overlayText.textContent = 'First Flight mastered'; playButton.innerHTML = 'PLAY AGAIN <span>▶</span>'; overlay.classList.remove('hidden'); tone(880,.12); }
 
@@ -74,11 +80,14 @@ function update(dt) {
   }
   if (player.y + SIZE >= landing) { player.y = landing-SIZE; player.vy = 0; player.grounded = true; player.rotation = Math.round(player.rotation/(Math.PI/2))*Math.PI/2; }
   else player.grounded = false;
+  player.nearOrb = null;
   for (const o of level) {
     const sx = o.x - distance;
     if (o.kind === 'spike' && boxHitsSpike(o)) die();
     if (o.kind === 'pad' && player.grounded && player.x+SIZE > sx && player.x < sx+o.w && Math.abs(player.y+SIZE-FLOOR) < 4) { player.vy=-o.power; player.grounded=false; tone(910,.08); burst(sx+20,FLOOR-8,'#ffe15a',18); }
     if (o.kind === 'portal' && sx < player.x+SIZE && sx+o.w > player.x && !o.used) { o.used=true; player.speed=o.speed; flash=.65; tone(760,.1); burst(player.x+20,player.y+20,o.color,24); }
+    if (o.kind === 'orb' && !o.used && Math.hypot(player.x+SIZE/2-(sx+o.w/2), player.y+SIZE/2-o.y) < 52) player.nearOrb = o;
+    if (o.kind === 'coin' && !o.collected && Math.hypot(player.x+SIZE/2-(sx+o.w/2), player.y+SIZE/2-o.y) < 35) { o.collected=true; player.coins++; tone(1200,.05); burst(sx+12,o.y,'#ffdf51',10); }
   }
   if (player.y < CEILING-SIZE || player.y > H+80) die();
   distance += speed * dt; const pct = Math.min(100, Math.floor(distance / LEVEL_END * 100)); runScore.textContent = `${pct}%`; progressFill.style.width = `${pct}%`;
@@ -103,8 +112,10 @@ function drawSpike(o) { const x=o.x-distance; for(let i=0;i<o.count;i++){const s
 function drawBlock(o) { const x=o.x-distance,y=FLOOR-o.h; rect(x,y,o.w,o.h,'#7948ed');rect(x+4,y+4,o.w-8,o.h-8,'#a38aff');rect(x+8,y+8,o.w-16,7,'#d2c7ff');rect(x+8,y+20,o.w-16,3,'rgba(29,22,94,.4)'); }
 function drawPad(o) { const x=o.x-distance; ctx.shadowColor='#ffe46a';ctx.shadowBlur=13;rect(x,FLOOR-10,o.w,10,'#ffe352');ctx.shadowBlur=0;ctx.fillStyle='#fffbd1';ctx.beginPath();ctx.moveTo(x+9,FLOOR-4);ctx.lineTo(x+o.w/2,FLOOR-16);ctx.lineTo(x+o.w-9,FLOOR-4);ctx.closePath();ctx.fill(); }
 function drawPortal(o) { const x=o.x-distance, y=FLOOR-o.h;ctx.save();ctx.translate(x+o.w/2,y+o.h/2);ctx.strokeStyle=o.color;ctx.lineWidth=8;ctx.shadowColor=o.color;ctx.shadowBlur=18;ctx.beginPath();ctx.ellipse(0,0,19,53,0,0,Math.PI*2);ctx.stroke();ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,0,10,43,0,0,Math.PI*2);ctx.stroke();ctx.restore(); }
+function drawOrb(o) { const x=o.x-distance+o.w/2;ctx.save();ctx.translate(x,o.y);ctx.shadowColor=o.color;ctx.shadowBlur=16;ctx.fillStyle=o.color;ctx.beginPath();ctx.arc(0,0,15,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle='#fff8d5';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.stroke();ctx.restore(); }
+function drawCoin(o) { if(o.collected)return;const x=o.x-distance+12;ctx.save();ctx.translate(x,o.y);ctx.rotate(beat*4);ctx.fillStyle='#ffd545';ctx.shadowColor='#ffd545';ctx.shadowBlur=12;ctx.beginPath();ctx.arc(0,0,11,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#fff4a4';ctx.fillRect(-3,-7,6,14);ctx.restore(); }
 function drawPlayer() { player.trail.forEach((t,i)=>{ctx.globalAlpha=Math.max(0,t.life)*.33;rect(t.x-i*3,t.y,20-i*.7,20-i*.7,'#3fe4f3');});ctx.globalAlpha=1;ctx.save();ctx.translate(player.x+SIZE/2,player.y+SIZE/2);ctx.rotate(player.rotation);ctx.shadowColor='#35e5fa';ctx.shadowBlur=18;rect(-21,-21,42,42,'#32d9f0');ctx.shadowBlur=0;rect(-15,-15,30,30,'#2478bc');rect(-13,-11,8,8,'#10204d');rect(5,-11,8,8,'#10204d');rect(-9,8,18,5,'#10204d');ctx.restore(); }
-function draw() { drawBackground(); level.forEach(o=>{ if(o.kind==='spike')drawSpike(o); else if(o.kind==='block')drawBlock(o); else if(o.kind==='pad')drawPad(o); else drawPortal(o); }); particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,p.size,p.size);});ctx.globalAlpha=1;drawPlayer();if(flash){ctx.fillStyle=`rgba(255,255,255,${flash*.13})`;ctx.fillRect(0,0,W,H);} }
+function draw() { drawBackground(); level.forEach(o=>{ if(o.kind==='spike')drawSpike(o); else if(o.kind==='block')drawBlock(o); else if(o.kind==='pad')drawPad(o); else if(o.kind==='portal')drawPortal(o); else if(o.kind==='orb')drawOrb(o); else drawCoin(o); }); particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life*2);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,p.size,p.size);});ctx.globalAlpha=1;drawPlayer();ctx.fillStyle='rgba(255,255,255,.7)';ctx.font='800 15px Nunito';ctx.fillText(`◈ ${player.coins}`,W-72,28);if(flash){ctx.fillStyle=`rgba(255,255,255,${flash*.13})`;ctx.fillRect(0,0,W,H);} }
 function loop(time) { if(!running) return; const dt=Math.min(.028,(time-lastTime)/1000);lastTime=time;update(dt);draw();requestAnimationFrame(loop); }
 
 playButton.addEventListener('pointerdown',e=>e.stopPropagation()); playButton.addEventListener('click',e=>{e.stopPropagation();start();});
